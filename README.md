@@ -1,4 +1,4 @@
-# 🕵️‍♂️ Inspectra
+# Inspectra
 
 ### The AI-Native QA Command Center for Autonomous Testing
 
@@ -26,7 +26,7 @@ Instead of writing hundreds of lines of static selectors, you give Inspectra a h
 
 ---
 
-## ✨ Features
+##  Features
 
 | Feature | Description | Status |
 | :--- | :--- | :--- |
@@ -41,7 +41,7 @@ Instead of writing hundreds of lines of static selectors, you give Inspectra a h
 
 ---
 
-## 🏗 Architecture
+## Architecture
 
 Inspectra is built with a decoupled architecture designed for high throughput and reliable browser orchestration.
 
@@ -60,7 +60,7 @@ graph TD
 
 ---
 
-## 🛠 Tech Stack
+##  Tech Stack
 
 | Category | Technology |
 | :--- | :--- |
@@ -73,7 +73,7 @@ graph TD
 
 ---
 
-## 📸 Screenshots
+##  Screenshots
 
 > [!NOTE]
 > *UI screenshots coming soon. View the conceptual layout below.*
@@ -86,7 +86,7 @@ graph TD
 
 ---
 
-## 🚀 Installation
+##  Installation
 
 ### Prerequisites
 - Node.js 20.x or higher
@@ -152,7 +152,7 @@ STORAGE_DIR=./storage
 
 ---
 
-## 📂 Project Structure
+##  Project Structure
 
 ```text
 inspectra/
@@ -185,7 +185,7 @@ inspectra/
 
 ---
 
-## 🤝 Contributing
+##  Contributing
 
 We welcome contributions from the community!
 
@@ -199,7 +199,7 @@ Please follow our [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ---
 
-## 🔒 Security
+##  Security
 
 For security vulnerabilities, please do not open an issue. Instead, email security@inspectra.test. We take security seriously and will respond within 24 hours.
 
@@ -211,7 +211,7 @@ Distributed under the MIT License. See `LICENSE` for more information.
 
 ---
 
-## 💬 Community
+##  Community
 
 - **Motivation**: We believe testing should be as intelligent as the apps we build.
 - **Vision**: To become the industry standard for AI-native autonomous quality assurance.
@@ -219,5 +219,5 @@ Distributed under the MIT License. See `LICENSE` for more information.
 
 <div align="center">
   <br />
-  Built with ❤️ by the Inspectra Team
+  Built with ❤️ by the Arthur
 </div>

@@ -1,0 +1,61 @@
+{
+  "name": "inspectra-backend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Inspectra autonomous AI QA orchestration backend",
+  "scripts": {
+    "dev": "nest start --watch",
+    "start": "node dist/main.js",
+    "build": "nest build",
+    "lint": "eslint \"src/**/*.ts\"",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@nestjs/common": "^11.1.9",
+    "@nestjs/config": "^4.0.2",
+    "@nestjs/core": "^11.1.9",
+    "@nestjs/event-emitter": "^3.1.0",
+    "@nestjs/jwt": "^11.0.1",
+    "@nestjs/mapped-types": "^2.1.0",
+    "@nestjs/passport": "^11.0.5",
+    "@nestjs/platform-express": "^11.1.9",
+    "@nestjs/platform-socket.io": "^11.1.9",
+    "@nestjs/throttler": "^6.4.0",
+    "@nestjs/typeorm": "^11.0.1",
+    "@nestjs/websockets": "^11.1.9",
+    "bcryptjs": "^3.0.3",
+    "bullmq": "^5.65.1",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.3",
+    "ioredis": "^5.8.2",
+    "module-alias": "^2.2.3",
+    "passport": "^0.7.0",
+    "passport-jwt": "^4.0.1",
+    "pg": "^8.16.3",
+    "pixelmatch": "^7.2.0",
+    "playwright": "^1.57.0",
+    "pngjs": "^7.0.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
+    "socket.io": "^4.8.1",
+    "typeorm": "^0.3.29",
+    "uuid": "^13.0.0"
+  },
+  "_moduleAliases": {
+    "@": "dist"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^11.0.14",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/express": "^5.0.6",
+    "@types/module-alias": "^2.0.4",
+    "@types/node": "^24.10.1",
+    "@types/passport-jwt": "^4.0.1",
+    "@types/pngjs": "^6.0.5",
+    "@typescript-eslint/eslint-plugin": "^8.48.0",
+    "@typescript-eslint/parser": "^8.48.0",
+    "eslint": "^9.39.1",
+    "eslint-config-prettier": "^10.1.8",
+    "typescript": "^5.9.3"
+  }
+}

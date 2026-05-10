@@ -14,10 +14,31 @@ import { useInspectraStore } from "@/stores/use-inspectra-store";
 export function LiveSessionScreen() {
   const paused = useInspectraStore((state) => state.sessionPaused);
   const setPaused = useInspectraStore((state) => state.setSessionPaused);
-  const selectedSessionId = "latest"; // This should be dynamic in a real app
-  const { data: session, isLoading } = useLiveSession(selectedSessionId);
+  const selectedSessionId = useInspectraStore((state) => state.selectedSessionId);
+  const { data: session, isLoading } = useLiveSession(selectedSessionId || "latest");
   const pushToast = useInspectraStore((state) => state.pushToast);
   
+  if (!selectedSessionId && !session) {
+    return (
+      <div className="flex min-h-[60vh] flex-col items-center justify-center text-center">
+        <div className="mb-6 grid size-20 place-items-center rounded-2xl bg-white/[0.04] text-cyan ring-1 ring-white/10">
+          <Play className="size-10" />
+        </div>
+        <h2 className="text-2xl font-bold">No active session</h2>
+        <p className="mt-2 max-w-sm text-muted">
+          Select a previous session from the reports or start a new autonomous test from the dashboard.
+        </p>
+        <Button 
+          variant="primary" 
+          className="mt-8"
+          onClick={() => useInspectraStore.getState().setActiveScreen("dashboard")}
+        >
+          Go to Dashboard
+        </Button>
+      </div>
+    );
+  }
+
   const aiLogs = session?.aiLogs ?? [];
 
   return (

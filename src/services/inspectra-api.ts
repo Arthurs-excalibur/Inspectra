@@ -46,7 +46,12 @@ export const inspectraApi = {
     me: () => fetchApi("/auth/me"),
   },
   dashboard: () => fetchApi("/dashboard"),
+  diagnostics: () => fetchApi("/health/diagnostics"),
   projects: () => fetchApi("/projects"),
+  createProject: (dto: any) => fetchApi("/projects", {
+    method: "POST",
+    body: JSON.stringify(dto),
+  }),
   liveSession: (sessionId: string) => fetchApi(`/sessions/${sessionId}`),
   reports: () => fetchApi("/reports"),
   getReport: (id: string) => fetchApi(`/reports/${id}`),

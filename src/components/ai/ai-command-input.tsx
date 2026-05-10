@@ -3,8 +3,10 @@
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { Bot, Mic, Play, Sparkles } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { useCreateSession } from "@/hooks/use-inspectra-data";
 import { useInspectraStore } from "@/stores/use-inspectra-store";
 
 const presets = [
@@ -27,22 +29,52 @@ export function AiCommandInput() {
   const setCommand = useInspectraStore((state) => state.setCommand);
   const pushToast = useInspectraStore((state) => state.pushToast);
   const router = useRouter();
+  const selectedProjectId = useInspectraStore((state) => state.selectedProjectId);
+  const { mutate: createSession, isPending } = useCreateSession();
 
   function execute() {
-    pushToast({
-      type: "success",
-      title: "AI test started",
-      detail: command,
+    if (!selectedProjectId) {
+      pushToast({
+        type: "warning",
+        title: "No project selected",
+        detail: "Please select a project before running an AI test.",
+      });
+      return;
+    }
+
+    createSession({ projectId: selectedProjectId, prompt: command }, {
+      onSuccess: (session) => {
+        useInspectraStore.getState().setSelectedSessionId(session.id);
+        pushToast({
+          type: "success",
+          title: "AI test started",
+          detail: command,
+        });
+        router.push("/live");
+      },
+      onError: (error: any) => {
+        pushToast({
+          type: "critical",
+          title: "Failed to start test",
+          detail: error.message || "An unexpected error occurred.",
+        });
+      }
     });
-    router.push("/live");
   }
 
   return (
     <Card className="p-5">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="mb-1 font-mono text-xs uppercase text-cyan">AI Command</p>
-          <h2 className="text-lg font-semibold">What should Inspectra verify?</h2>
+        <div className="flex flex-col gap-1">
+          <p className="font-mono text-xs uppercase text-cyan">AI Command</p>
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg font-semibold">What should Inspectra verify?</h2>
+            {selectedProjectId && (
+              <Badge tone="running" className="animate-in fade-in slide-in-from-left-2">
+                Context: {selectedProjectId}
+              </Badge>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-2 rounded-full border border-cyan/30 bg-cyan/10 px-3 py-1.5 text-xs text-cyan">
           <Sparkles className="size-3.5" />
@@ -64,9 +96,18 @@ export function AiCommandInput() {
         <Button variant="secondary" className="md:w-12" aria-label="Voice input">
           <Mic className="size-4" />
         </Button>
-        <Button variant="primary" onClick={execute}>
-          <Play className="size-4" />
-          Execute
+        <Button variant="primary" onClick={execute} disabled={isPending}>
+          {isPending ? (
+            <span className="flex items-center gap-2">
+              <span className="size-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+              Starting...
+            </span>
+          ) : (
+            <>
+              <Play className="size-4" />
+              Execute
+            </>
+          )}
         </Button>
       </div>
 

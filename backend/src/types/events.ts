@@ -17,6 +17,7 @@ export type RealtimeEventType =
   | "issue_classified"
   | "report_generated"
   | "approval_required"
+  | "workflow_progress"
   | "log";
 
 export type RealtimeEvent =
@@ -28,4 +29,5 @@ export type RealtimeEvent =
   | { type: "confidence_update"; sessionId: string; confidence: number }
   | { type: "issue_detected" | "issue_classified"; sessionId: string; issue: Issue }
   | { type: "report_generated"; sessionId: string; report: Report }
+  | { type: "workflow_progress"; sessionId: string; step: number; totalSteps: number; status: string }
   | { type: "log"; sessionId?: string; level: "info" | "warn" | "error"; message: string; timestamp: string };

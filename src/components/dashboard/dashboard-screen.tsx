@@ -28,8 +28,8 @@ export function DashboardScreen() {
   const dashboardStatistics = data?.statistics;
   const dashboardAgents = data?.activeSessions ?? [];
   const dashboardActivities = data?.recentActivity ?? [];
-  const dashboardTrend: any[] = [];
-  const dashboardSeverity: any[] = [];
+  const dashboardTrend = data?.trend ?? [];
+  const dashboardSeverity = data?.severity ?? [];
   
   const kpis = [
     { 

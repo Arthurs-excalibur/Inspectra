@@ -2,51 +2,67 @@
 
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Chrome, ExternalLink, FolderPlus, Globe, Lock, Settings2 } from "lucide-react";
+import { Chrome, ExternalLink, FolderPlus, Globe, Lock, Play, Settings2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { TabButton } from "@/components/ui/tabs";
-import { projects as initialProjects } from "@/services/mock-data";
+import { useProjects, useCreateProject } from "@/hooks/use-inspectra-data";
 import { useInspectraStore } from "@/stores/use-inspectra-store";
 import type { Project } from "@/types/inspectra";
 
 const projectTabs = ["overview", "test suites", "reports", "environments", "settings"];
 
 export function ProjectsScreen() {
-  const [projects, setProjects] = useState<Project[]>(initialProjects);
+  const { data: projects = [], isLoading } = useProjects();
+  const { mutate: createProjectMutation } = useCreateProject();
   const [showForm, setShowForm] = useState(false);
-  const [selectedProjectId, setSelectedProjectId] = useState(initialProjects[0]?.id ?? "");
+  
+  const globalSelectedProjectId = useInspectraStore((state) => state.selectedProjectId);
+  const setGlobalSelectedProjectId = useInspectraStore((state) => state.setSelectedProjectId);
+  
+  const [selectedProjectId, setSelectedProjectId] = useState(globalSelectedProjectId ?? projects[0]?.id ?? "");
   const [activeTab, setActiveTab] = useState(projectTabs[0]);
   const pushToast = useInspectraStore((state) => state.pushToast);
-  const selectedProject = projects.find((project) => project.id === selectedProjectId) ?? projects[0];
+
+  const handleSelectProject = (id: string) => {
+    setSelectedProjectId(id);
+    setGlobalSelectedProjectId(id);
+  };
+
+  const selectedProject = projects.find((project: any) => project.id === selectedProjectId) ?? projects[0];
 
   function createProject(formData: FormData) {
     const name = String(formData.get("name") || "New Project");
     const baseUrl = String(formData.get("baseUrl") || "https://example.com");
-    const auth = String(formData.get("auth") || "session") as Project["auth"];
-    const browser = String(formData.get("browser") || "Chrome") as Project["browser"];
-    const model = String(formData.get("model") || "GPT-5.4");
-    const project: Project = {
-      id: name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
-      name,
-      framework: "Next.js",
-      baseUrl,
-      lastRun: "Not run yet",
-      passRate: 0,
-      environments: ["staging"],
-      auth,
-      browser,
-      model,
-    };
+    const authMode = String(formData.get("auth") || "session") as any;
+    const browser = String(formData.get("browser") || "chromium").toLowerCase() as any;
+    const aiModel = String(formData.get("model") || "GPT-5.4");
 
-    setProjects((current) => [project, ...current]);
-    setSelectedProjectId(project.id);
-    setShowForm(false);
-    pushToast({
-      type: "success",
-      title: "Project created",
-      detail: `${name} is ready for autonomous tests.`,
+    createProjectMutation({
+      name,
+      baseUrl,
+      authMode,
+      browser,
+      aiModel,
+      environments: ["staging"],
+    }, {
+      onSuccess: (project: any) => {
+        handleSelectProject(project.id);
+        setShowForm(false);
+        pushToast({
+          type: "success",
+          title: "Project created",
+          detail: `${name} is ready for autonomous tests.`,
+        });
+      },
+      onError: (error: any) => {
+        pushToast({
+          type: "critical",
+          title: "Failed to create project",
+          detail: error.message,
+        });
+      }
     });
   }
 
@@ -94,17 +110,18 @@ export function ProjectsScreen() {
             <label className="grid gap-2 text-sm text-muted">
               Browser
               <select name="browser" className="min-h-10 rounded-lg border border-white/10 bg-[#111823] px-3 text-foreground">
-                <option>Chrome</option>
-                <option>Firefox</option>
-                <option>Edge</option>
+                <option value="chromium">Chromium</option>
+                <option value="firefox">Firefox</option>
+                <option value="webkit">WebKit</option>
               </select>
             </label>
             <label className="grid gap-2 text-sm text-muted">
               AI model
               <select name="model" className="min-h-10 rounded-lg border border-white/10 bg-[#111823] px-3 text-foreground">
-                <option>GPT-5.4</option>
-                <option>GPT-5.4 Mini</option>
-                <option>Local vision model</option>
+                <option value="openai/gpt-4o">GPT-4o</option>
+                <option value="openai/gpt-4o-mini">GPT-4o Mini</option>
+                <option value="anthropic/claude-3-sonnet">Claude 3.5 Sonnet</option>
+                <option value="ollama/llama3">Local Llama 3</option>
               </select>
             </label>
             <Button variant="primary" className="self-end">Create</Button>
@@ -119,7 +136,7 @@ export function ProjectsScreen() {
               key={project.id}
               whileHover={{ y: -2 }}
               type="button"
-              onClick={() => setSelectedProjectId(project.id)}
+              onClick={() => handleSelectProject(project.id)}
               className="rounded-lg border border-white/10 bg-white/[0.045] p-4 text-left transition hover:border-cyan/35"
             >
               <div className="mb-4 flex items-start justify-between gap-3">
@@ -136,8 +153,23 @@ export function ProjectsScreen() {
                 <span className="flex items-center gap-2"><Chrome className="size-4 text-cyan" /> {project.browser}</span>
                 <span className="flex items-center gap-2"><Lock className="size-4 text-cyan" /> {project.auth} auth</span>
               </div>
-              <div className="mt-4 flex flex-wrap gap-2">
-                {project.environments.map((env) => <Badge key={env}>{env}</Badge>)}
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+                <div className="flex flex-wrap gap-2">
+                  {project.environments.map((env) => <Badge key={env}>{env}</Badge>)}
+                </div>
+                <Button 
+                  size="sm" 
+                  variant="primary" 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleSelectProject(project.id);
+                    useInspectraStore.getState().setActiveScreen("dashboard");
+                  }}
+                  className="h-8 px-3 text-xs"
+                >
+                  <Play className="size-3" />
+                  Start Test
+                </Button>
               </div>
             </motion.button>
           ))}

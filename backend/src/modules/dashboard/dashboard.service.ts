@@ -19,9 +19,22 @@ export class DashboardService {
     const failed = sessions.filter((session) => session.status === "failed").length;
     const totalFinished = completed + failed;
 
+    // Aggregate trend (last 7 days)
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    
+    const trendData = await this.database.sessions
+      .createQueryBuilder("session")
+      .select("TO_CHAR(session.startedAt, 'Mon') as day")
+      .addSelect("COUNT(*) filter (where session.status = 'completed') as passed")
+      .addSelect("AVG(EXTRACT(EPOCH FROM (session.completedAt - session.startedAt))) * 1000 as response")
+      .where("session.startedAt > :sevenDaysAgo", { sevenDaysAgo })
+      .groupBy("day")
+      .getRawMany();
+
     return {
       statistics: {
-        testsRunToday: sessions.length,
+        testsRunToday: sessions.filter(s => s.startedAt > new Date(new Date().setHours(0,0,0,0))).length,
         passRate: totalFinished > 0 ? Math.round((completed / totalFinished) * 1000) / 10 : 100,
         activeSessions: sessions.filter((session) => session.status === "running" || session.status === "paused").length,
         criticalIssues: issues.filter((issue) => issue.severity === "critical").length,
@@ -37,7 +50,7 @@ export class DashboardService {
           type: "session",
           title: session.objective,
           status: session.status,
-          timestamp: session.updatedAt,
+          timestamp: session.startedAt,
         })),
         ...reports.slice(-5).map((report) => ({
           type: "report",
@@ -46,6 +59,18 @@ export class DashboardService {
           timestamp: report.createdAt,
         })),
       ].sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()),
+      trend: trendData.length > 0 ? trendData.map(d => ({
+        day: d.day,
+        passed: parseInt(d.passed),
+        response: Math.round(parseFloat(d.response || "0"))
+      })) : [
+        { day: "Today", passed: 0, response: 0 }
+      ],
+      severity: [
+        { name: "Critical", value: issues.filter(i => i.severity === "critical").length, fill: "#ff6f83" },
+        { name: "Warning", value: issues.filter(i => i.severity === "warning").length, fill: "#ffbe5a" },
+        { name: "Info", value: issues.filter(i => i.severity === "info").length, fill: "#5ad7ff" },
+      ]
     };
   }
 }

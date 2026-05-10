@@ -5,12 +5,11 @@ import { io, Socket } from "socket.io-client";
 import { useInspectraStore } from "@/stores/use-inspectra-store";
 import { useAuthStore } from "@/stores/use-auth-store";
 
-const SOCKET_URL = "http://localhost:4000/realtime";
+const SOCKET_URL = "http://localhost:4000";
 
 export function useRealtimeSession() {
   const [socket, setSocket] = useState<Socket | null>(null);
   const paused = useInspectraStore((state) => state.sessionPaused);
-  const advanceReasoning = useInspectraStore((state) => state.advanceReasoning);
   const pushToast = useInspectraStore((state) => state.pushToast);
 
   const token = useAuthStore((state) => state.token);
@@ -27,35 +26,39 @@ export function useRealtimeSession() {
       console.log("Connected to Inspectra Realtime Gateway");
     });
 
-    s.on("ai:thought", (data) => {
-      if (!paused) {
-        advanceReasoning();
-        // Potentially push more specific data to a separate log store later
+    s.on("event", (payload: any) => {
+      const { type, sessionId } = payload;
+
+      switch (type) {
+        case "session_started":
+          pushToast({ type: "success", title: "Session started", detail: payload.session.objective });
+          break;
+        
+        case "workflow_progress":
+          // Handle progress if needed
+          break;
+
+        case "navigation":
+        case "click":
+        case "form_fill":
+          pushToast({ type: "success", title: "Agent action", detail: payload.action.label });
+          break;
+
+        case "issue_detected":
+          pushToast({ type: "critical", title: "Issue detected", detail: payload.issue.title });
+          break;
+
+        case "screenshot_captured":
+          // Our live stream uses base64
+          if (payload.screenshot.path.startsWith("data:")) {
+             useInspectraStore.getState().setLiveFrame(payload.screenshot.path);
+          }
+          break;
+        
+        case "reasoning_chunk":
+          // In a real app we'd append to a log array
+          break;
       }
-    });
-
-    s.on("action:started", (data) => {
-      pushToast({
-        type: "success",
-        title: "Action started",
-        detail: data.label,
-      });
-    });
-
-    s.on("issue:detected", (data) => {
-      pushToast({
-        type: "critical",
-        title: "Issue detected",
-        detail: data.title,
-      });
-    });
-
-    s.on("approval_required", (data) => {
-      pushToast({
-        type: "intervention",
-        title: "Action intercepted",
-        detail: `Safety gate: ${data.action.label}. Manual approval required.`,
-      });
     });
 
     setSocket(s);
@@ -63,7 +66,7 @@ export function useRealtimeSession() {
     return () => {
       s.disconnect();
     };
-  }, [advanceReasoning, paused, pushToast]);
+  }, [paused, pushToast, token]);
 
   return {
     socket,

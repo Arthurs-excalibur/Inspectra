@@ -6,6 +6,7 @@ import { AuthModule } from "@/modules/auth/auth.module";
 import { ProjectsModule } from "@/modules/projects/projects.module";
 import { SessionsModule } from "@/modules/sessions/sessions.module";
 import { ReportsModule } from "@/modules/reports/reports.module";
+import { HealthModule } from "@/modules/health/health.module";
 import { SettingsModule } from "@/modules/settings/settings.module";
 import { DashboardModule } from "@/modules/dashboard/dashboard.module";
 import { AiModule } from "@/modules/ai/ai.module";
@@ -17,6 +18,9 @@ import { DatabaseModule } from "@/database/database.module";
 import { QueuesModule } from "@/queues/queues.module";
 import { StorageModule } from "@/services/storage/storage.module";
 import { ObservabilityModule } from "@/common/observability/observability.module";
+import { SecurityModule } from "@/common/security/security.module";
+import { VisualRegressionModule } from "@/services/visual-regression/visual-regression.module";
+import { GatewaysModule } from "@/common/gateways/gateways.module";
 import { validateConfig } from "@/config/env.validation";
 
 @Module({
@@ -32,6 +36,9 @@ import { validateConfig } from "@/config/env.validation";
       },
     ]),
     ObservabilityModule,
+    SecurityModule,
+    VisualRegressionModule,
+    GatewaysModule,
     DatabaseModule,
     QueuesModule,
     StorageModule,
@@ -44,6 +51,7 @@ import { validateConfig } from "@/config/env.validation";
     ScreenshotsModule,
     McpModule,
     ReportsModule,
+    HealthModule,
     SettingsModule,
     SessionsModule,
   ],

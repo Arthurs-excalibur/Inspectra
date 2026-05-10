@@ -16,6 +16,16 @@ export function useProjects() {
   });
 }
 
+export function useCreateProject() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: any) => inspectraApi.createProject(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+    },
+  });
+}
+
 export function useReports() {
   return useQuery({
     queryKey: ["reports"],

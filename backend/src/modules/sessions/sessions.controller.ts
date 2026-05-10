@@ -35,6 +35,11 @@ export class SessionsController {
     return await this.sessions.approveAction(user.id, id, actionId);
   }
 
+  @Get("latest")
+  async getLatest(@CurrentUser() user: PublicUser) {
+    return await this.sessions.getLatest(user.id);
+  }
+
   @Get(":id")
   async get(@CurrentUser() user: PublicUser, @Param("id") id: string) {
     return await this.sessions.get(user.id, id);

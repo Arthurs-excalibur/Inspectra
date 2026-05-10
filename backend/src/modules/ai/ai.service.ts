@@ -1,18 +1,27 @@
 import { Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { PostgresDatabaseService } from "@/database/postgres-database.service";
+import { AiProvider, AiMessage } from "./providers/ai-provider.interface";
+import { OpenRouterProvider } from "./providers/openrouter.provider";
+import { OllamaProvider } from "./providers/ollama.provider";
 import type { AiLog, Issue, Project, Session } from "@/types/domain";
 
-export type ExecutionPlan = {
-  objective: string;
-  actions: Array<{
-    type: "navigation" | "click" | "fill" | "press" | "scroll" | "screenshot" | "assertion";
-    label: string;
+export type AgentAction = {
+  type: "navigation" | "click" | "fill" | "press" | "scroll" | "screenshot" | "assertion" | "wait" | "finish";
+  label: string;
+  metadata?: {
     target?: string;
     selector?: string;
     value?: string;
-    requiresApproval?: boolean;
-  }>;
+    timeout?: number;
+    reason?: string;
+  };
+  requiresApproval?: boolean;
+};
+
+export type ExecutionPlan = {
+  objective: string;
+  actions: AgentAction[];
   risks: string[];
 };
 
@@ -24,7 +33,8 @@ export class AiService {
   ) {}
 
   async extractIntent(prompt: string): Promise<string> {
-    return prompt.trim().length > 0 ? prompt.trim() : "Run autonomous QA smoke test";
+    const sanitized = prompt.replace(/[<>]/g, "").trim();
+    return sanitized.length > 0 ? sanitized : "Run autonomous QA smoke test";
   }
 
   async createPlan(session: Session, project: Project): Promise<ExecutionPlan> {
@@ -88,19 +98,79 @@ DOM Highlights: ${domSnapshot?.slice(0, 5000) ?? "No DOM data"}`;
     }
   }
 
-  private async callLlm(system: string, user: string, image?: Buffer): Promise<string> {
+  private getProvider(): AiProvider {
     const provider = this.config.get<string>("AI_PROVIDER");
-    let url = "";
-    let headers: Record<string, string> = { "Content-Type": "application/json" };
-
-    if (provider === "ollama") {
-      url = `${this.config.get("OLLAMA_BASE_URL")}/api/chat`;
-    } else {
-      url = `${this.config.get("OPENAI_COMPATIBLE_BASE_URL")}/chat/completions`;
-      headers["Authorization"] = `Bearer ${this.config.get("OPENAI_COMPATIBLE_API_KEY")}`;
+    if (provider === "openai-compatible" || provider === "openrouter") {
+      return new OpenRouterProvider(
+        this.config.get<string>("OPENAI_COMPATIBLE_API_KEY") || "",
+        this.config.get<string>("OPENAI_COMPATIBLE_BASE_URL"),
+      );
     }
+    if (provider === "ollama") {
+      return new OllamaProvider(this.config.get<string>("OLLAMA_BASE_URL"));
+    }
+    // Fallback or other providers...
+    throw new Error(`AI Provider ${provider} not implemented`);
+  }
 
-    const messages: any[] = [
+  async nextStep(
+    session: Session,
+    project: Project,
+    observation: { screenshot?: Buffer; dom?: string; lastActionStatus?: string },
+  ): Promise<AgentAction> {
+    const provider = this.getProvider();
+    
+    const systemPrompt = `You are Inspectra, an autonomous QA agent.
+Goal: ${session.objective}
+Project: ${project.name} (${project.baseUrl})
+
+Instructions:
+1. Analyze the current DOM and screenshot.
+2. Decide the NEXT best action to achieve the goal.
+3. If the goal is reached or an unrecoverable error occurs, use type: "finish".
+4. For high-risk actions (payment, delete), set "requiresApproval": true.
+5. Return ONLY a JSON object representing the action.
+
+Action Format:
+{ 
+  "type": "navigation"|"click"|"fill"|"press"|"scroll"|"screenshot"|"assertion"|"wait"|"finish",
+  "label": "Human readable description",
+  "metadata": { "target": "URL", "selector": "CSS/XPath", "value": "text", "reason": "why" },
+  "requiresApproval": boolean 
+}`;
+
+    const userPrompt = `Current Action History: ${session.currentAction}
+Last Action Status: ${observation.lastActionStatus ?? "unknown"}
+DOM Snapshot (truncated): ${observation.dom?.slice(0, 10000)}
+What is the next step?`;
+
+    const messages: AiMessage[] = [
+      { role: "system", content: systemPrompt },
+      { 
+        role: "user", 
+        content: observation.screenshot 
+          ? [
+              { type: "text", text: userPrompt },
+              { type: "image_url", image_url: { url: `data:image/png;base64,${observation.screenshot.toString("base64")}` } }
+            ]
+          : userPrompt 
+      },
+    ];
+
+    try {
+      const response = await provider.complete(messages, { model: this.config.get("AI_MODEL") });
+      // Clean up JSON if LLM added markdown blocks
+      const cleanJson = response.replace(/```json|```/g, "").trim();
+      return JSON.parse(cleanJson) as AgentAction;
+    } catch (error: any) {
+      console.error("AI NextStep Error:", error);
+      return { type: "finish", label: "AI Reasoning failed, stopping session.", metadata: { reason: error.message } };
+    }
+  }
+
+  private async callLlm(system: string, user: string, image?: Buffer): Promise<string> {
+    const provider = this.getProvider();
+    const messages: AiMessage[] = [
       { role: "system", content: system },
       { 
         role: "user", 
@@ -113,24 +183,7 @@ DOM Highlights: ${domSnapshot?.slice(0, 5000) ?? "No DOM data"}`;
       },
     ];
 
-    const body = {
-      model: this.config.get("AI_MODEL") ?? "gpt-4o",
-      messages,
-      stream: false,
-    };
-
-    const resp = await fetch(url, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(provider === "ollama" ? { ...body, model: "llama3-vision" } : body),
-    });
-
-    if (!resp.ok) {
-      throw new Error(`AI Provider Error: ${resp.statusText}`);
-    }
-
-    const data = await resp.json();
-    return provider === "ollama" ? data.message.content : data.choices[0].message.content;
+    return provider.complete(messages, { model: this.config.get("AI_MODEL") });
   }
 
   private generateMockPlan(session: Session, project: Project): ExecutionPlan {
@@ -139,8 +192,8 @@ DOM Highlights: ${domSnapshot?.slice(0, 5000) ?? "No DOM data"}`;
     return {
       objective: session.objective,
       actions: [
-        { type: "navigation", label: `Open ${project.baseUrl}`, target: project.baseUrl },
-        { type: "assertion", label: "Verify page is reachable", selector: "body" },
+        { type: "navigation", label: `Open ${project.baseUrl}`, metadata: { target: project.baseUrl } },
+        { type: "assertion", label: "Verify page is reachable", metadata: { selector: "body" } },
         { type: "screenshot", label: wantsMobile ? "Capture mobile viewport" : "Capture desktop viewport" },
       ],
       risks: ["network timeout"],

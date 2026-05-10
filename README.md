@@ -12,6 +12,9 @@
 
 ---
 
+> [!WARNING]
+> **Note:** This project is not currently working and we will fix it soon!
+
 ## 📖 Overview
 
 In today’s rapid deployment cycles, traditional end-to-end (E2E) tests are notoriously brittle and expensive to maintain. **Inspectra** eliminates this friction by introducing an **Autonomous Testing Layer**.

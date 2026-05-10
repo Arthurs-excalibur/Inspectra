@@ -9,6 +9,7 @@ import {
   Play,
   Search,
   Settings,
+  ShieldCheck,
   Sparkles,
 } from "lucide-react";
 import Link from "next/link";
@@ -23,7 +24,9 @@ import { ReportsScreen } from "@/components/reports/reports-screen";
 import { VisualRegressionScreen } from "@/components/visual/visual-regression-screen";
 import { AgentLogsScreen } from "@/components/logs/agent-logs-screen";
 import { SettingsScreen } from "@/components/settings/settings-screen";
+import { RealityDashboard } from "@/components/reality/reality-dashboard";
 import { useRealtimeSession } from "@/hooks/use-realtime-session";
+import { useProjects, useLiveSession } from "@/hooks/use-inspectra-data";
 import { useInspectraStore } from "@/stores/use-inspectra-store";
 import { useAuthStore } from "@/stores/use-auth-store";
 import { AuthScreen } from "@/components/auth/auth-screen";
@@ -36,7 +39,7 @@ const navItems: NavItem[] = [
   { id: "live", label: "Live Sessions", icon: Play },
   { id: "reports", label: "Reports", icon: Bug },
   { id: "visual", label: "Visual Regression", icon: BarChart3 },
-  { id: "logs", label: "Agent Logs", icon: Activity },
+  { id: "reality", label: "Reality Check", icon: ShieldCheck },
   { id: "settings", label: "Settings", icon: Settings },
 ];
 
@@ -44,8 +47,14 @@ export function AppShell() {
   useRealtimeSession();
   const pathname = usePathname();
   const pushToast = useInspectraStore((state) => state.pushToast);
+  const selectedProjectId = useInspectraStore((state) => state.selectedProjectId);
+  const selectedSessionId = useInspectraStore((state) => state.selectedSessionId);
+  const { data: projects } = useProjects();
+  const { data: session } = useLiveSession(selectedSessionId || "latest");
+  
+  const currentProject = projects?.find((p: any) => p.id === selectedProjectId) || projects?.[0];
+
   const reasoningCursor = useInspectraStore((state) => state.reasoningCursor);
-  const currentReasoning = "Preparing autonomous test.";
   const user = useAuthStore((state) => state.user);
 
   if (!user) {
@@ -94,36 +103,49 @@ export function AppShell() {
         </nav>
 
         <div className="mt-auto grid gap-3 max-[860px]:hidden">
-          <div className="rounded-lg border border-white/10 bg-white/[0.04] p-3">
+          <div className="rounded-lg border border-white/10 bg-white/[0.04] p-3 transition-colors hover:bg-white/[0.07]">
             <div className="mb-2 flex items-center gap-2">
-              <span className="size-2 animate-pulse rounded-full bg-green shadow-[0_0_0_6px_rgba(88,230,167,0.08)]" />
+              <span className={cn(
+                "size-2 rounded-full",
+                currentProject ? "animate-pulse bg-green shadow-[0_0_0_6px_rgba(88,230,167,0.08)]" : "bg-white/20"
+              )} />
               <strong className="text-sm">Inspectra Agent</strong>
             </div>
-            <p className="mb-0 text-xs text-muted">Awaiting objective...</p>
+            <p className="mb-0 text-xs text-muted">
+              {currentProject ? `Ready to audit ${currentProject.name}` : "Awaiting project selection..."}
+            </p>
           </div>
-          <Link
-            href="/live"
-            onClick={() =>
+          <Button
+            variant="primary"
+            onClick={() => {
+              useInspectraStore.getState().setActiveScreen("dashboard");
               pushToast({
-                type: "success",
-                title: "Quick test started",
-                detail: "Inspectra is launching a browser automation session.",
-              })
-            }
-            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-cyan/60 bg-gradient-to-r from-cyan to-green px-4 text-sm font-semibold text-[#061017] shadow-[0_0_32px_rgba(90,215,255,0.22)] transition hover:brightness-110"
+                type: "info",
+                title: "Launch center",
+                detail: "Prepare your next autonomous mission.",
+              });
+            }}
+            className="w-full"
           >
-            <Play className="size-4" />
-            Start Test
-          </Link>
+            <Sparkles className="size-4" />
+            Launch Mission
+          </Button>
         </div>
       </aside>
 
       <main className="min-w-0 overflow-y-auto p-4 max-[860px]:overflow-visible">
         <header className="sticky top-0 z-30 mb-5 flex items-center gap-3 rounded-lg border border-white/10 bg-[var(--panel)] p-3 backdrop-blur-xl max-[860px]:static max-[860px]:flex-col max-[860px]:items-stretch">
-          <div className="flex min-h-10 min-w-[190px] items-center justify-between gap-3 rounded-lg border border-white/10 bg-white/[0.04] px-3">
+          <button 
+            type="button"
+            onClick={() => useInspectraStore.getState().setActiveScreen("projects")}
+            className="flex min-h-10 min-w-[190px] items-center justify-between gap-3 rounded-lg border border-white/10 bg-white/[0.04] px-3 transition hover:border-cyan/40 hover:bg-white/[0.08]"
+          >
             <span className="text-xs text-muted">Project</span>
-            <strong className="text-sm">Acme Checkout</strong>
-          </div>
+            <div className="flex items-center gap-2">
+              <strong className="text-sm">{currentProject?.name ?? "Select Project"}</strong>
+              <FolderKanban className="size-3.5 text-muted" />
+            </div>
+          </button>
           <label className="relative min-w-0 flex-1">
             <span className="sr-only">Search</span>
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" />
@@ -157,6 +179,7 @@ export function AppShell() {
         {activeScreen === "live" && <LiveSessionScreen />}
         {activeScreen === "reports" && <ReportsScreen />}
         {activeScreen === "visual" && <VisualRegressionScreen />}
+        {activeScreen === "reality" && <RealityDashboard />}
         {activeScreen === "logs" && <AgentLogsScreen />}
         {activeScreen === "settings" && <SettingsScreen />}
       </main>
@@ -179,9 +202,9 @@ export function AppShell() {
 
         <div className="grid gap-3">
           {[
-            ["Current action", currentReasoning],
-            ["Fallback behavior", "Retry slow iframe, then capture DOM"],
-            ["Latest issue", "CTA overlaps footer on mobile"],
+            ["Current action", session?.currentAction ?? "Awaiting mission..."],
+            ["AI Confidence", session?.confidence ? `${Math.round(session.confidence * 100)}%` : "N/A"],
+            ["Latest objective", session?.objective ?? "None"],
           ].map(([label, value]) => (
             <div
               key={label}
